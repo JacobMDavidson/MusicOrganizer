@@ -11,25 +11,65 @@ import org.jaudiotagger.tag.Tag;
 
 public class MusicFile {
 
+	/** The source music file */
 	private File musicFile;
+
+	/** The destination music file */
 	private File destinationFile;
+
+	/** The Tags of the source music file */
 	private Tag musicFileTag;
+
+	/** Error flag set to true if an error occured during the copy */
 	private boolean error = false;
 
+	/** The file extension type for the music file */
 	private String fileExtension;
+
+	/** The absolute path of the source music file */
 	private String absolutePath;
+
+	/** The artist of the source music file */
 	private String artist;
+
+	/** The album title of the source music file */
 	private String albumTitle;
+
+	/** The song title of the source music file */
 	private String songTitle;
+
+	/** The path to the default documents folder */
 	private String documentsPath;
+
+	/** Error message, if an error occured */
 	private String errorMessage = "";
 
+	// -----------------------------------------------------------------------
+	// Constructors
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Create a new MusicFile objecy
+	 * 
+	 * @param musicFile
+	 *            - source music file
+	 * @param documentsPath
+	 *            - default documents folder for the user
+	 */
 	public MusicFile(File musicFile, String documentsPath) {
+
+		// Set the music file and documents path
 		this.musicFile = musicFile;
 		this.documentsPath = documentsPath;
+
+		// Determine the absolute path for the source music file
 		absolutePath = musicFile.getAbsolutePath();
+
+		// Retreive the file extension from the absolute path
 		fileExtension = FilenameUtils.getExtension(absolutePath);
 
+		// If this is a valid music file, retrieve the Tag, and copy the file to
+		// the destination
 		if (fileExtension.equals("mp3") || fileExtension.equals("m4a")
 				|| fileExtension.equals("m4p")) {
 			try {
@@ -46,6 +86,9 @@ public class MusicFile {
 				error = true;
 				errorMessage = "unidentified error.";
 			}
+
+			// Else, this is not a valid music file, set the error flag and
+			// error message
 		} else {
 			errorMessage = "not a valid music file.";
 			error = true;
@@ -62,7 +105,7 @@ public class MusicFile {
 		artist = cleanString(musicFileTag.getFirst(FieldKey.ALBUM_ARTIST));
 
 		// If artist is null, set via the artist tag
-		if (artist == null) {
+		if (artist.isEmpty() || artist == null) {
 			artist = cleanString(musicFileTag.getFirst(FieldKey.ARTIST));
 		}
 
@@ -70,6 +113,7 @@ public class MusicFile {
 		albumTitle = cleanString(musicFileTag.getFirst(FieldKey.ALBUM));
 		songTitle = cleanString(musicFileTag.getFirst(FieldKey.TITLE));
 
+		// If any of these fields are null, return an error message
 		if (artist == null || albumTitle == null || songTitle == null) {
 			errorMessage = "does not have valid tags for migration.";
 			return true;
@@ -89,15 +133,22 @@ public class MusicFile {
 		return cleanedString;
 	}
 
+	/**
+	 * Build the destination file
+	 */
 	private void constructDestination() {
 		String destinationPath = documentsPath + File.separator
 				+ "MusicOrganizerOutput" + File.separator + artist
 				+ File.separator + albumTitle + File.separator + songTitle
 				+ "." + fileExtension;
-		// Destination File
+		
+		// Instantiate the destination File
 		destinationFile = new File(destinationPath);
 	}
 
+	/**
+	 * Return the error message or successful details of the migration
+	 */
 	public String toString() {
 		String message = "";
 		if (error) {
@@ -110,6 +161,11 @@ public class MusicFile {
 		return message;
 	}
 
+	/**
+	 * Copy the music file to the desination
+	 * 
+	 * @return true if successful
+	 */
 	public boolean migrateFile() {
 		if (error) {
 			// The file should not be copied, there was an error
@@ -133,6 +189,11 @@ public class MusicFile {
 
 	}
 
+	/**
+	 * Retrieve the error flag
+	 * 
+	 * @return true if there was an error
+	 */
 	public boolean isError() {
 		return this.error;
 	}

@@ -1,27 +1,18 @@
-/**
- * Name: Jacob Davidson
- * Course: CSC 385-C (CRN: 12331)
- * Assignment: Module 2 Homework - Enumerating a File System Using Recursion
- * File: DirectoryLister.java
- * Date: 09/06/2013
- */
-
 package com.jacobmdavidson.MusicOrganizer;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 
 import javax.swing.*;
 
 /**
- * DirectoryLister class. This class allows the user to recursively display the
- * contents of a selected directory in the file system.
+ * MusicOrganizer class. This class allows the user to recursively search the
+ * contents of a selected directory for music files, and copy those files to a
+ * new location based on the following folder structure:
+ * default_documents_folder/artist/album_title/song
  */
 public class MusicOrganizer implements ActionListener {
 
@@ -35,12 +26,13 @@ public class MusicOrganizer implements ActionListener {
 	/** base path of directory to be traversed */
 	private String basePath;
 
-	/** document path for files to be copied to */
+	/** document path to which files will be copied */
 	private String documentsPath;
 
-	/** List of music files */
+	/** List of music files traversed */
 	private MusicFileList musicFileList;
 
+	/** Timer used in updated migration progress */
 	private Timer timer;
 
 	// -----------------------------------------------------------------------
@@ -48,7 +40,7 @@ public class MusicOrganizer implements ActionListener {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Create a new DirectoryLister that uses the specified GUI.
+	 * Create a new MusicOrganizer that uses the specified GUI.
 	 */
 	public MusicOrganizer(GUI gui) {
 		this.gui = gui;
@@ -66,6 +58,8 @@ public class MusicOrganizer implements ActionListener {
 	 * Allow user to select a directory for traversal.
 	 */
 	public void selectDirectory() {
+
+		// Add an action listener to the timer
 		timer.addActionListener(this);
 		timer.setInitialDelay(100);
 
@@ -75,31 +69,40 @@ public class MusicOrganizer implements ActionListener {
 		// allow user to select a directory from the file system
 		basePath = gui.getAbsoluteDirectoryPath();
 
-		timer.start();
-		// update the address label on the GUI
-		// gui.setAddressLabelText(basePath);
+		// If a legitimate folder was selected, begin migration
+		if (!basePath.equals("cancelled")) {
 
-		// traverse the selected directory, and display the contents
-		showDirectoryContents(basePath);
+			// Initialize the MusicFileList errors linked list
+			musicFileList.initializeErrors();
 
-		// timer.stop();
-		musicFileList.clear();
+			// Start the timer that will display progress
+			timer.start();
+
+			// Traverse the selected directory, copy music to the destination,
+			// and display the output results
+			beginTraversal(basePath);
+
+			// timer.stop();
+			musicFileList.clear();
+		} else {
+			// Display that the action was cancelled
+			gui.updateListing("Migration cancelled.");
+		}
 	}
 
 	/**
-	 * Show the directory listing. An error message is displayed if basePath
-	 * does not represent a valid directory.
+	 * Instantiate a Path object from the base path, and begin the enumeration
 	 * 
 	 * @param basePath
 	 *            the absolute path of a directory in the file system.
 	 */
-	public void showDirectoryContents(String basePath) {
+	public void beginTraversal(String basePath) {
 		// Use a try/catch block to determine if a valid directory was selected
 		try {
-			// Instantiate a File object with the provided basePath
-			// File f = new File(basePath);
+			// Instantiate a Path object with the provided basePath
 			Path path = Paths.get(basePath);
-			// Traverse the directory and display the contents
+
+			// Traverse the directory
 			enumerateDirectory(path);
 
 		}
@@ -114,19 +117,28 @@ public class MusicOrganizer implements ActionListener {
 	}
 
 	/**
-	 * Recursive method to enumerate the contents of a directory.
+	 * Recursive method to enumerate the contents of a directory, and copy all
+	 * found music to the destination.
 	 *
-	 * @param f
+	 * @param path
 	 *            directory to enumerate
 	 */
 	private void enumerateDirectory(Path path) {
+
+		// Instantiate a SwingWorker that enumerates the directory
 		SwingWorker<Void, Void> mySwingWorker = new SwingWorker<Void, Void>() {
+
+			// Disable the select folder button, and walk the file tree
 			@Override
 			protected Void doInBackground() throws Exception {
 				gui.disableButton();
 				Files.walkFileTree(path, musicFileList);
 				return null;
 			}
+
+			// Enable the select folder button, report the results, stop the
+			// timer, and update the address label with the source folder path
+			// that was enumerated.
 
 			@Override
 			protected void done() {
@@ -136,17 +148,28 @@ public class MusicOrganizer implements ActionListener {
 				gui.setAddressLabelText(basePath);
 			}
 		};
+
+		// Execute the SwingWorker
 		mySwingWorker.execute();
 
 	}
 
+	/**
+	 * Retrieve the default documents path
+	 * 
+	 * @return the default documents path
+	 */
 	public String getDocumentsPath() {
 		return documentsPath;
 	}
 
+	/**
+	 * Action performed via the Timer object to update the GUI with the progress
+	 * of the enumeration
+	 */
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		// TODO Auto-generated method stub
+
 		gui.setAddressLabelText("Scanning... " + musicFileList.getNumSuccess()
 				+ " files successfully copied.");
 	}

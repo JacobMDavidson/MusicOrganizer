@@ -5,6 +5,8 @@ import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import javax.swing.JButton;
@@ -21,17 +23,23 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 
-public class GUI extends JFrame {
+public class GUI extends JFrame implements ComponentListener {
 
 	private static final long serialVersionUID = 1L;
 
 	/** Event handler for button click events. */
 	private ButtonHandler buttonHandler;
 
-	/** Container for displaying Browse button and address of selected directory */
+	/**
+	 * Container for displaying Browse button, scanning progress, and address of
+	 * selected directory
+	 */
 	private JPanel addressPanel;
 
-	/** Text container for displaying address of selected directory */
+	/**
+	 * Text container for displaying scanning progress, and address of selected
+	 * directory
+	 */
 	private JLabel addressLabel;
 
 	/** Button for bringing up file chooser dialog */
@@ -43,14 +51,21 @@ public class GUI extends JFrame {
 	 */
 	private DefaultTableModel tableModel;
 
-	/** Table that displays contents of selected directory */
-	private JTable directoryContentsTable;
+	/** Table that display migration results output */
+	private JTable outputResultsTable;
 
-	/** Allows filesTable to be scrollable */
+	/** Allows outputResultsTable to be scrollable */
 	private JScrollPane tablePane;
 
 	/** Object containing non-GUI logic for program */
 	private MusicOrganizer model;
+
+	/** Width and height for the window */
+	private int windowWidth = 800;
+	private int windowHeight = 600;
+
+	// Tracks the preffered table width
+	private int tableWidth = 0;
 
 	// -----------------------------------------------------------------------
 	// Constructors
@@ -61,7 +76,7 @@ public class GUI extends JFrame {
 	 */
 	public GUI() {
 		// use small default size for low-res screens
-		setSize(800, 600);
+		setSize(windowWidth, windowHeight);
 
 		// set value for title bar of window
 		setTitle("Music Organizer");
@@ -73,6 +88,9 @@ public class GUI extends JFrame {
 				System.exit(0);
 			}
 		});
+
+		// Component listener to listen for resize events
+		addComponentListener(this);
 
 		// create window components
 		initGUI();
@@ -97,15 +115,16 @@ public class GUI extends JFrame {
 		// event handler for button clicks
 		buttonHandler = new ButtonHandler();
 
-		// create text label for displaying selected directory
+		// create text label for displaying scanning progress and selected
+		// directory
 		addressLabel = new JLabel();
 
 		// create Select Folder button
 		browseButton = new JButton("Select Folder");
 		browseButton.addActionListener(buttonHandler);
 
-		// create panel for showing Browse button and value for selected
-		// directory
+		// create panel for showing Browse button, scanning progress, and value
+		// for the selected directory
 		addressPanel = new JPanel();
 
 		// ensure components are laid out from left to right
@@ -115,11 +134,11 @@ public class GUI extends JFrame {
 		addressPanel.add(browseButton);
 		addressPanel.add(addressLabel);
 
-		// create the table for displaying the directory contents
+		// create the table for displaying the results output
 		createOutputTable();
 
 		// make sure table is scrollable
-		tablePane = new JScrollPane(directoryContentsTable,
+		tablePane = new JScrollPane(outputResultsTable,
 				JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
 				JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
@@ -133,19 +152,20 @@ public class GUI extends JFrame {
 	 * directory.
 	 */
 	private void createOutputTable() {
-		// create underlying model for table that displays contents of selected
-		// directory
+		// create underlying model for table that displays results output
 		tableModel = new DefaultTableModel();
 
-		// table model has 4 columns, to display: file/folder name, size (files
-		// only), type (file or folder), and date last modified
+		// table model has 1 column to display the results output
 		tableModel.addColumn("Output");
 
 		// create GUI table component
-		directoryContentsTable = new JTable(tableModel);
+		outputResultsTable = new JTable(tableModel);
+
+		// Turn off auto resizing of the table
+		outputResultsTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 
 		// disallow reordering of table columns
-		directoryContentsTable.getTableHeader().setReorderingAllowed(false);
+		outputResultsTable.getTableHeader().setReorderingAllowed(false);
 
 		// create a TableCellRenderer for displaying left justified text
 		DefaultTableCellRenderer leftJustifiedRenderer = new DefaultTableCellRenderer();
@@ -156,16 +176,17 @@ public class GUI extends JFrame {
 		rightJustifiedRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
 
 		// set cell renderers for data cells
-		directoryContentsTable.getColumn("Output").setCellRenderer(
+		outputResultsTable.getColumn("Output").setCellRenderer(
 				leftJustifiedRenderer);
 
-		// create and format headers for column that displays file/folder names
+		// create and format headers for column that displays output
 		JLabel nameLabel = new JLabel(" Output", SwingConstants.LEFT);
 		nameLabel.setBorder(UIManager.getBorder("TableHeader.cellBorder"));
 
-		directoryContentsTable.getColumn("Output").setHeaderRenderer(
+		outputResultsTable.getColumn("Output").setHeaderRenderer(
 				new CustomTableCellRenderer());
-		directoryContentsTable.getColumn("Output").setHeaderValue(nameLabel);
+		outputResultsTable.getColumn("Output").setHeaderValue(nameLabel);
+
 	}
 
 	/**
@@ -177,7 +198,7 @@ public class GUI extends JFrame {
 
 	/**
 	 * Return the absolute path of a directory selected by the user via a
-	 * JFileChooser.
+	 * JFileChooser. Returns the string "cancelled" if the action is cancelled.
 	 */
 	public String getAbsoluteDirectoryPath() {
 		// display file chooser dialog
@@ -187,14 +208,18 @@ public class GUI extends JFrame {
 		jfc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
 		// show the dialog
-		jfc.showOpenDialog(this);
+		int chosenOption = jfc.showOpenDialog(this);
 
-		// return the selected directory, if one is chosen; otherwise, return
-		// null
-		if (jfc.getSelectedFile() != null) {
-			return jfc.getSelectedFile().getAbsolutePath();
+		if (chosenOption == JFileChooser.APPROVE_OPTION) {
+			// return the selected directory, if one is chosen; otherwise,
+			// return null
+			if (jfc.getSelectedFile() != null) {
+				return jfc.getSelectedFile().getAbsolutePath();
+			} else {
+				return null;
+			}
 		} else {
-			return null;
+			return "cancelled";
 		}
 	}
 
@@ -206,12 +231,25 @@ public class GUI extends JFrame {
 	}
 
 	/**
-	 * Update the table with the specified file/folder information. The
-	 * information for each file/folder occupies a single row in the table.
+	 * Update the table with the specified output information. Each String
+	 * occupies a single row in the table.
 	 */
 	public void updateListing(String output) {
 		// add information in new row in table
 		tableModel.addRow(new String[] { " " + output });
+
+		// Resize the table based on the max row width
+		for (int rowNumber = 0; rowNumber < outputResultsTable.getRowCount(); rowNumber++) {
+			TableCellRenderer renderer = outputResultsTable.getCellRenderer(
+					rowNumber, 0);
+			Component comp = outputResultsTable.prepareRenderer(renderer,
+					rowNumber, 0);
+			tableWidth = Math.max(comp.getPreferredSize().width, tableWidth);
+			outputResultsTable.getColumnModel().getColumn(0)
+					.setMaxWidth(tableWidth);
+			outputResultsTable.getColumnModel().getColumn(0)
+					.setPreferredWidth(tableWidth);
+		}
 	}
 
 	/**
@@ -226,6 +264,9 @@ public class GUI extends JFrame {
 		while (tableModel.getRowCount() > 0) {
 			tableModel.removeRow(0);
 		}
+
+		// Reset tableWidth to 0
+		tableWidth = 0;
 	}
 
 	public void disableButton() {
@@ -273,6 +314,36 @@ public class GUI extends JFrame {
 				model.selectDirectory();
 			}
 		}
+	}
+
+	/**
+	 * Resize the table's minimum and maximum widths according to the resized
+	 * window
+	 */
+	@Override
+	public void componentResized(ComponentEvent e) {
+
+		windowWidth = e.getComponent().getWidth();
+		int maxWidth = Math.max(windowWidth, tableWidth);
+		outputResultsTable.getColumnModel().getColumn(0)
+				.setMinWidth(windowWidth);
+		outputResultsTable.getColumnModel().getColumn(0).setMaxWidth(maxWidth);
+
+	}
+
+	@Override
+	public void componentMoved(ComponentEvent e) {
+
+	}
+
+	@Override
+	public void componentShown(ComponentEvent e) {
+
+	}
+
+	@Override
+	public void componentHidden(ComponentEvent e) {
+
 	}
 
 }
