@@ -19,9 +19,9 @@ When a folder is selected, the application uses a SimpleFileVisitor to enumerate
 
 ## Limitations
 
-I built this tool to clean up my own music collection which consisted of .mp3, .m4a, and .m4p files only. In its current state, this application will not find music files with any other extensions. Currently, the application copies music to the destination location, leaving the original music file untouched. This was done purposely to ensure no music is lost during the process, but has the drawback of using a lot of disk space and requiring the user to manually review the results deleting the original files only when he or she is comfortable all music was accounted for. Finally, there is not option for selecting destination folder. It will always copy music to /default_documents_directoy/MusicOrganizerOutput.
+I built this tool to clean up my own music collection which consisted of .mp3, .m4a, and .m4p files only. In its current state, this application will not find music files with any other extensions. Currently, the application copies music to the destination location, leaving the original music file untouched. This was done purposely to ensure no music is lost during the process, but has the drawback of using a lot of disk space and requiring the user to manually review the results deleting the original files only when he or she is comfortable all music was accounted for. Finally, there is no option for selecting the destination folder. It will always copy music to /default_documents_directoy/MusicOrganizerOutput.
 
-Feel free to fork the repo to tweak the tool to your liking!
+Feel free to fork the repo to tweak this tool to your liking!
 
 ## References
 
